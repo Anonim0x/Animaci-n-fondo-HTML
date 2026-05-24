@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Malla Naranja</title>
+<style>
+html, body {
+  margin: 0; padding: 0; overflow: hidden;
+  background: #000; width: 100%; height: 100%;
+  font-family: system-ui, -apple-system, sans-serif;
+}
+canvas { display: block; width: 100%; height: 100%; }
+
+#panel {
+  position: fixed; top: 20px; right: 20px;
+  background: rgba(20,20,30,0.92);
+  color: #ddd; padding: 16px 20px;
+  border-radius: 12px; font-size: 13px;
+  width: 200px; z-index: 10;
+  backdrop-filter: blur(6px);
+  border: 1px solid rgba(255,255,255,0.1);
+  display: none;
+}
+#panel.visible { display: block; }
+
+#panel h3 { margin: 0 0 12px 0; font-size: 14px; color: #fff; }
+
+#panel label { display: block; margin-bottom: 4px; font-size: 11px; color: #999; }
+#panel input[type="range"] { width: 100%; margin-bottom: 10px; accent-color: #ff5014; }
+#panel .row { display: flex; justify-content: space-between; font-size: 12px; }
+#panel .row span { color: #fff; font-weight: 500; }
+
+#toggle-panel {
+  position: fixed; top: 20px; right: 20px; z-index: 11;
+  background: rgba(20,20,30,0.8);
+  color: #fff; border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 8px; padding: 6px 10px; cursor: pointer;
+  font-size: 18px; backdrop-filter: blur(4px);
+}
+#toggle-panel:hover { background: rgba(255,80,20,0.3); }
+
+#color-presets {
+  display: flex; gap: 6px; margin-bottom: 10px; flex-wrap: wrap;
+}
+#color-presets button {
+  width: 24px; height: 24px; border-radius: 50%;
+  border: 2px solid transparent; cursor: pointer;
+}
+#color-presets button.active { border-color: #fff; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+
+<button id="toggle-panel" title="Abrir controles">⚙</button>
+
+<div id="panel">
+  <h3>Controles</h3>
+
+  <label>Puntos</label>
+  <div class="row">
+    <input type="range" id="sl-points" min="20" max="200" value="70">
+    <span id="v-points">70</span>
+  </div>
+
+  <label>Conexión (px)</label>
+  <div class="row">
+    <input type="range" id="sl-connect" min="50" max="400" value="180">
+    <span id="v-connect">180</span>
+  </div>
+
+  <label>Fade trail</label>
+  <div class="row">
+    <input type="range" id="sl-fade" min="2" max="50" value="25">
+    <span id="v-fade">0.25</span>
+  </div>
+
+  <label>Invasión del color</label>
+  <div class="row">
+    <input type="range" id="sl-spread" min="0" max="50" value="12">
+    <span id="v-spread">12%</span>
+  </div>
+
+  <label>Intensidad del color</label>
+  <div class="row">
+    <input type="range" id="sl-intense" min="0" max="100" value="30">
+    <span id="v-intense">30%</span>
+  </div>
+
+  <label>Dirección degradado</label>
+  <div class="row">
+    <input type="range" id="sl-angle" min="0" max="360" value="45">
+    <span id="v-angle">45°</span>
+  </div>
+
+  <label>Velocidad</label>
+  <div class="row">
+    <input type="range" id="sl-speed" min="0" max="200" value="20">
+    <span id="v-speed">1.0×</span>
+  </div>
+
+  <label>Color</label>
+  <div id="color-presets">
+    <button data-color="255,80,20" style="background:#ff5014" class="active"></button>
+    <button data-color="255,200,0" style="background:#ffc800"></button>
+    <button data-color="0,200,255" style="background:#00c8ff"></button>
+    <button data-color="100,255,100" style="background:#64ff64"></button>
+    <button data-color="255,50,150" style="background:#ff3296"></button>
+    <button data-color="200,100,255" style="background:#c864ff"></button>
+  </div>
+
+  <label style="margin-top:4px;">Fondo degradado</label>
+  <div style="font-size:11px;color:#999;margin-bottom:4px;">
+    Diagonal color-linea → negro → color-linea
+  </div>
+</div>
+
+<script>
+const c = document.getElementById("c");
+const ctx = c.getContext("2d");
+let w, h;
+
+function resize() {
+  w = c.width = window.innerWidth;
+  h = c.height = window.innerHeight;
+}
+window.addEventListener("resize", resize);
+resize();
+
+// --- Config ---
+let cfg = {
+  points: 70,
+  connectDist: 180,
+  fade: 0.25,
+  color: [255, 80, 20],
+  spread: 0.12,
+  colorIntensity: 0.30,
+  angle: 45,
+  speed: 1.0,
+};
+
+let pts = [];
+let rotX = 0, rotY = 0;
+
+function initPoints(n) {
+  const baseV = 0.15;
+  pts = Array.from({ length: n }, () => ({
+    x: (Math.random() - 0.5) * 1200,
+    y: (Math.random() - 0.5) * 800,
+    z: (Math.random() - 0.5) * 800,
+    vx: (Math.random() - 0.5) * baseV,
+    vy: (Math.random() - 0.5) * baseV,
+    vz: (Math.random() - 0.5) * baseV,
+    baseVx: (Math.random() - 0.5) * baseV,
+    baseVy: (Math.random() - 0.5) * baseV,
+    baseVz: (Math.random() - 0.5) * baseV,
+  }));
+}
+initPoints(cfg.points);
+
+function project(p) {
+  const focal = 800;
+  const scale = focal / (focal + p.z);
+  return { sx: p.x * scale + w / 2, sy: p.y * scale + h / 2, scale };
+}
+
+function rotateX(p, angle) {
+  const c = Math.cos(angle), s = Math.sin(angle);
+  return { x: p.x, y: p.y * c - p.z * s, z: p.y * s + p.z * c };
+}
+
+function rotateY(p, angle) {
+  const c = Math.cos(angle), s = Math.sin(angle);
+  return { x: p.x * c + p.z * s, y: p.y, z: -p.x * s + p.z * c };
+}
+
+function draw() {
+  requestAnimationFrame(draw);
+
+  const [cr, cg, cb] = cfg.color;
+  const ang = cfg.angle * Math.PI / 180;
+  const cos = Math.cos(ang), sin = Math.sin(ang);
+  const cx = w / 2, cy = h / 2, d = Math.sqrt(w * w + h * h) / 2;
+  const x1 = cx - cos * d, y1 = cy - sin * d;
+  const x2 = cx + cos * d, y2 = cy + sin * d;
+  const sp = cfg.spread;
+  const ci = cfg.colorIntensity;
+  const r2 = Math.round(cr * ci), g2 = Math.round(cg * ci), b2 = Math.round(cb * ci);
+  const grad = ctx.createLinearGradient(x1, y1, x2, y2);
+  grad.addColorStop(0, `rgba(${r2},${g2},${b2},${cfg.fade})`);
+  grad.addColorStop(sp, `rgba(0,0,0,${cfg.fade})`);
+  grad.addColorStop(1 - sp, `rgba(0,0,0,${cfg.fade})`);
+  grad.addColorStop(1, `rgba(${r2},${g2},${b2},${cfg.fade})`);
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, w, h);
+
+  const s = cfg.speed;
+  rotX += 0.0008 * s;
+  rotY += 0.001 * s;
+
+  const projected = pts.map(p => {
+    p.vx = p.baseVx * s + (Math.random() - 0.5) * 0.08;
+    p.vy = p.baseVy * s + (Math.random() - 0.5) * 0.08;
+    p.vz = p.baseVz * s + (Math.random() - 0.5) * 0.08;
+    p.x += p.vx; p.y += p.vy; p.z += p.vz;
+    if (Math.abs(p.x) > 600) p.vx *= -1;
+    if (Math.abs(p.y) > 400) p.vy *= -1;
+    if (Math.abs(p.z) > 400) p.vz *= -1;
+    let r = rotateY(p, rotY);
+    r = rotateX(r, rotX);
+    return { ...project(r), orig: p };
+  });
+
+  for (let i = 0; i < projected.length; i++) {
+    for (let j = i + 1; j < projected.length; j++) {
+      const a = projected[i], b = projected[j];
+      const dx = a.sx - b.sx, dy = a.sy - b.sy;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist < cfg.connectDist) {
+        const alpha = (1 - dist / cfg.connectDist) * 0.3;
+        ctx.beginPath();
+        ctx.moveTo(a.sx, a.sy);
+        ctx.lineTo(b.sx, b.sy);
+        ctx.strokeStyle = `rgba(${cr},${cg},${cb},${alpha})`;
+        ctx.lineWidth = 0.6;
+        ctx.stroke();
+      }
+    }
+  }
+
+  for (const p of projected) {
+    ctx.fillStyle = `rgba(${cr},${cg},${cb},${0.5 * p.scale})`;
+    ctx.beginPath();
+    ctx.arc(p.sx, p.sy, 1.2, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+draw();
+
+// --- UI ---
+const panel = document.getElementById("panel");
+const toggleBtn = document.getElementById("toggle-panel");
+
+toggleBtn.addEventListener("click", () => {
+  panel.classList.toggle("visible");
+  toggleBtn.textContent = panel.classList.contains("visible") ? "✕" : "⚙";
+});
+
+function setupSlider(id, displayId, onchange) {
+  const sl = document.getElementById(id);
+  const disp = document.getElementById(displayId);
+  sl.addEventListener("input", () => {
+    const val = parseFloat(sl.value);
+    onchange(val);
+    disp.textContent = sl.step && sl.step.includes(".") ? val.toFixed(2) : val;
+  });
+}
+
+setupSlider("sl-points", "v-points", (v) => {
+  cfg.points = v;
+  initPoints(v);
+});
+
+setupSlider("sl-connect", "v-connect", (v) => {
+  cfg.connectDist = v;
+});
+
+setupSlider("sl-spread", "v-spread", (v) => {
+  cfg.spread = v / 100;
+  document.getElementById("v-spread").textContent = v + "%";
+});
+
+setupSlider("sl-intense", "v-intense", (v) => {
+  cfg.colorIntensity = v / 100;
+  document.getElementById("v-intense").textContent = v + "%";
+});
+
+setupSlider("sl-angle", "v-angle", (v) => {
+  cfg.angle = v;
+  document.getElementById("v-angle").textContent = v + "°";
+});
+
+setupSlider("sl-speed", "v-speed", (v) => {
+  cfg.speed = v / 20;
+  document.getElementById("v-speed").textContent = (v / 20).toFixed(1) + "×";
+});
+
+setupSlider("sl-fade", "v-fade", (v) => {
+  cfg.fade = v / 100;
+  document.getElementById("v-fade").textContent = (v / 100).toFixed(2);
+});
+
+document.querySelectorAll("#color-presets button").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll("#color-presets button").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    cfg.color = btn.dataset.color.split(",").map(Number);
+  });
+});
+</script>
+</body>
+</html>

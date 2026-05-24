@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OBS Liquid Organic Lines</title>
+
+<style>
+
+html,body{
+    margin:0;
+    width:100%;
+    height:100%;
+    overflow:hidden;
+    background:#000;
+}
+
+canvas{
+    display:block;
+    width:100%;
+    height:100%;
+}
+
+</style>
+</head>
+
+<body>
+
+<canvas id="canvas"></canvas>
+
+<script>
+
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
+
+let w,h;
+let time = 0;
+
+function resize(){
+
+    w = canvas.width = window.innerWidth;
+    h = canvas.height = window.innerHeight;
+
+}
+
+window.addEventListener("resize", resize);
+resize();
+
+
+
+// ======================================
+// CONTORNO LÍQUIDO
+// ======================================
+
+function drawContour(radius,index){
+
+    ctx.beginPath();
+
+    // profundidad/parallax
+    const depth =
+        index * 0.015;
+
+    // grosor variable suave
+    ctx.lineWidth =
+        2 +
+        Math.sin(index * 0.25 + time*0.5) * 1.8;
+
+    // transparencia elegante
+    const alpha =
+        0.28 +
+        (1 - index/44) * 0.6;
+
+    ctx.strokeStyle =
+        `rgba(255,255,255,${alpha})`;
+
+    for(let a=0; a<=Math.PI*2 + 0.03; a+=0.03){
+
+        // movimiento líquido tipo tinta
+
+        const liquid1 =
+            Math.sin(a*2 + time*(0.45 + depth)) * 36;
+
+        const liquid2 =
+            Math.cos(a*4 - time*(0.25 + depth)) * 18;
+
+        const liquid3 =
+            Math.sin(a*6 + time*(0.18 + depth)) * 10;
+
+        // MISMA deformación base
+        // → jamás se cruzan
+        const deform =
+            liquid1 + liquid2 + liquid3;
+
+        const r =
+            radius + deform;
+
+        // leve parallax espacial
+        const offsetX =
+            Math.sin(time*0.08 + index*0.1) * 8;
+
+        const offsetY =
+            Math.cos(time*0.06 + index*0.1) * 8;
+
+        const x =
+            w/2 +
+            offsetX +
+            Math.cos(a) * r;
+
+        const y =
+            h/2 +
+            offsetY +
+            Math.sin(a) * r;
+
+        if(a===0){
+
+            ctx.moveTo(x,y);
+
+        }else{
+
+            ctx.lineTo(x,y);
+
+        }
+    }
+
+    ctx.stroke();
+}
+
+
+
+// ======================================
+// LOOP
+// ======================================
+
+function animate(){
+
+    // fade ultra suave
+    ctx.fillStyle = "rgba(0,0,0,0.16)";
+    ctx.fillRect(0,0,w,h);
+
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+
+    const spacing = 16;
+    const totalLines = 44;
+
+    for(let i=0;i<totalLines;i++){
+
+        const radius =
+            40 + (i * spacing);
+
+        drawContour(radius,i);
+    }
+
+    // movimiento cinematográfico lento
+    time += 0.006;
+
+    requestAnimationFrame(animate);
+}
+
+animate();
+
+</script>
+
+</body>
+</html>

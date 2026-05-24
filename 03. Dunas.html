@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OBS 3D Fishnet Field</title>
+
+<style>
+
+html,body{
+    margin:0;
+    width:100%;
+    height:100%;
+    overflow:hidden;
+    background:#000;
+}
+
+canvas{
+    display:block;
+    width:100%;
+    height:100%;
+    filter: contrast(120%) brightness(108%);
+}
+
+</style>
+</head>
+
+<body>
+
+<canvas id="canvas"></canvas>
+
+<script>
+
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
+
+let w,h;
+let time = 0;
+
+function resize(){
+
+    w = canvas.width = window.innerWidth;
+    h = canvas.height = window.innerHeight;
+
+}
+
+window.addEventListener("resize", resize);
+resize();
+
+
+
+// ======================================
+// CONFIG
+// ======================================
+
+const spacing = 16;
+const totalLines = 95;
+const step = 12;
+
+// rotación 45°
+const angle = Math.PI / 4;
+
+
+
+// ======================================
+// CAMPO ORGÁNICO
+// ======================================
+
+function field(x,y){
+
+    const wave1 =
+
+        Math.sin(
+            x * 0.004 +
+            time * 0.42
+        ) * 75;
+
+    const wave2 =
+
+        Math.cos(
+            x * 0.009 -
+            time * 0.20
+        ) * 26;
+
+    const wave3 =
+
+        Math.sin(
+            (x + y) * 0.002 +
+            time * 0.15
+        ) * 52;
+
+    return wave1 + wave2 + wave3;
+
+}
+
+
+
+// ======================================
+// LOOP
+// ======================================
+
+function animate(){
+
+    // fondo cinematográfico
+    ctx.fillStyle = "rgba(0,0,0,0.06)";
+    ctx.fillRect(0,0,w,h);
+
+    ctx.save();
+
+    // centro
+    ctx.translate(w/2,h/2);
+
+    // ROTACIÓN 45°
+    ctx.rotate(angle);
+
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+
+    // área gigante para cubrir pantalla
+    const drawWidth =
+        Math.max(w,h) * 2;
+
+    // ==================================
+    // LÍNEAS
+    // ==================================
+
+    for(let i=0;i<totalLines;i++){
+
+        // profundidad
+        const depth =
+            i / totalLines;
+
+        // separación PERFECTA
+        const baseY =
+
+            (i * spacing) -
+
+            (totalLines * spacing / 2);
+
+        // alpha 3D
+        const alpha =
+
+            0.025 +
+
+            depth * 0.22;
+
+        // grosor progresivo
+        const width =
+
+            0.2 +
+
+            depth * 1.6;
+
+        ctx.beginPath();
+
+        ctx.strokeStyle =
+            `rgba(255,255,255,${alpha})`;
+
+        ctx.lineWidth = width;
+
+        for(let x=-drawWidth; x<drawWidth; x+=step){
+
+            // ==================================
+            // MISMA deformación
+            // → jamás se cruzan
+            // ==================================
+
+            const offset =
+                field(x,baseY);
+
+            // PARALLAX 3D
+            const perspective =
+
+                Math.sin(
+                    x * 0.0012 +
+                    time * 0.10
+                ) *
+
+                (depth * 180);
+
+            const y =
+
+                baseY +
+
+                offset +
+
+                perspective;
+
+            if(x === -drawWidth){
+
+                ctx.moveTo(x,y);
+
+            }else{
+
+                ctx.lineTo(x,y);
+
+            }
+
+        }
+
+        ctx.stroke();
+
+    }
+
+    ctx.restore();
+
+    // movimiento ultra suave
+    time += 0.023;
+
+    requestAnimationFrame(animate);
+}
+
+animate();
+
+</script>
+
+</body>
+</html>
