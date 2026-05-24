@@ -110,10 +110,9 @@ canvas { display: block; width: 100%; height: 100%; }
     <button data-color="200,100,255" style="background:#c864ff"></button>
   </div>
 
-  <label style="margin-top:4px;">Fondo degradado</label>
-  <div style="font-size:11px;color:#999;margin-bottom:4px;">
-    Diagonal color-linea → negro → color-linea
-  </div>
+  <button id="btn-save" style="margin-top:8px;width:100%;padding:6px;background:rgba(255,80,20,0.3);color:#fff;border:1px solid rgba(255,80,20,0.5);border-radius:6px;cursor:pointer;font-size:12px;">
+    💾 Guardar configuración
+  </button>
 </div>
 
 <script>
@@ -129,7 +128,7 @@ window.addEventListener("resize", resize);
 resize();
 
 // --- Config ---
-let cfg = {
+const DEFAULTS = {
   points: 70,
   connectDist: 180,
   fade: 0.25,
@@ -139,6 +138,44 @@ let cfg = {
   angle: 45,
   speed: 1.0,
 };
+
+let cfg = {};
+
+function loadConfig() {
+  const saved = localStorage.getItem("malla3d_config");
+  if (saved) {
+    try { return JSON.parse(saved); } catch (e) {}
+  }
+  return JSON.parse(JSON.stringify(DEFAULTS));
+}
+
+function saveConfig() {
+  localStorage.setItem("malla3d_config", JSON.stringify(cfg));
+}
+
+function applySliders() {
+  document.getElementById("sl-points").value = cfg.points;
+  document.getElementById("v-points").textContent = cfg.points;
+  document.getElementById("sl-connect").value = cfg.connectDist;
+  document.getElementById("v-connect").textContent = cfg.connectDist;
+  document.getElementById("sl-fade").value = Math.round(cfg.fade * 100);
+  document.getElementById("v-fade").textContent = cfg.fade.toFixed(2);
+  document.getElementById("sl-spread").value = Math.round(cfg.spread * 100);
+  document.getElementById("v-spread").textContent = Math.round(cfg.spread * 100) + "%";
+  document.getElementById("sl-intense").value = Math.round(cfg.colorIntensity * 100);
+  document.getElementById("v-intense").textContent = Math.round(cfg.colorIntensity * 100) + "%";
+  document.getElementById("sl-angle").value = cfg.angle;
+  document.getElementById("v-angle").textContent = cfg.angle + "°";
+  document.getElementById("sl-speed").value = Math.round(cfg.speed * 20);
+  document.getElementById("v-speed").textContent = cfg.speed.toFixed(1) + "×";
+  const ci = cfg.color.join(",");
+  document.querySelectorAll("#color-presets button").forEach(b => {
+    b.classList.toggle("active", b.dataset.color === ci);
+  });
+}
+
+cfg = loadConfig();
+applySliders();
 
 let pts = [];
 let rotX = 0, rotY = 0;
@@ -298,6 +335,13 @@ document.querySelectorAll("#color-presets button").forEach(btn => {
     btn.classList.add("active");
     cfg.color = btn.dataset.color.split(",").map(Number);
   });
+});
+
+document.getElementById("btn-save").addEventListener("click", () => {
+  saveConfig();
+  const btn = document.getElementById("btn-save");
+  btn.textContent = "✓ Guardado";
+  setTimeout(() => { btn.textContent = "💾 Guardar configuración"; }, 2000);
 });
 </script>
 </body>
