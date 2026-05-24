@@ -100,6 +100,12 @@ canvas { display: block; width: 100%; height: 100%; }
     <span id="v-speed">1.0×</span>
   </div>
 
+  <label>Zoom</label>
+  <div class="row">
+    <input type="range" id="sl-zoom" min="10" max="200" value="80">
+    <span id="v-zoom">0.8×</span>
+  </div>
+
   <label>Color</label>
   <div id="color-presets">
     <button data-color="255,80,20" style="background:#ff5014" class="active"></button>
@@ -137,6 +143,7 @@ const DEFAULTS = {
   colorIntensity: 0.30,
   angle: 45,
   speed: 1.0,
+  zoom: 0.8,
 };
 
 let cfg = JSON.parse(JSON.stringify(DEFAULTS));
@@ -156,6 +163,8 @@ function applySliders() {
   document.getElementById("v-angle").textContent = cfg.angle + "°";
   document.getElementById("sl-speed").value = Math.round(cfg.speed * 20);
   document.getElementById("v-speed").textContent = cfg.speed.toFixed(1) + "×";
+  document.getElementById("sl-zoom").value = Math.round(cfg.zoom * 100);
+  document.getElementById("v-zoom").textContent = cfg.zoom.toFixed(1) + "×";
   const ci = cfg.color.join(",");
   document.querySelectorAll("#color-presets button").forEach(b => {
     b.classList.toggle("active", b.dataset.color === ci);
@@ -184,7 +193,7 @@ function initPoints(n) {
 initPoints(cfg.points);
 
 function project(p) {
-  const focal = 800;
+  const focal = 800 * cfg.zoom;
   const scale = focal / (focal + p.z);
   return { sx: p.x * scale + w / 2, sy: p.y * scale + h / 2, scale };
 }
@@ -311,6 +320,11 @@ setupSlider("sl-speed", "v-speed", (v) => {
   document.getElementById("v-speed").textContent = (v / 20).toFixed(1) + "×";
 });
 
+setupSlider("sl-zoom", "v-zoom", (v) => {
+  cfg.zoom = v / 100;
+  document.getElementById("v-zoom").textContent = (v / 100).toFixed(1) + "×";
+});
+
 setupSlider("sl-fade", "v-fade", (v) => {
   cfg.fade = v / 100;
   document.getElementById("v-fade").textContent = (v / 100).toFixed(2);
@@ -332,7 +346,8 @@ document.getElementById("btn-save").addEventListener("click", () => {
   spread: ${cfg.spread},
   colorIntensity: ${cfg.colorIntensity},
   angle: ${cfg.angle},
-  speed: ${cfg.speed},`;
+  speed: ${cfg.speed},
+  zoom: ${cfg.zoom},`;
   const html = document.documentElement.outerHTML.replace(
     /const DEFAULTS = \{[\s\S]*?\};/,
     `const DEFAULTS = {${defKey}};`
