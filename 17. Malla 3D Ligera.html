@@ -344,9 +344,10 @@ document.getElementById("btn-save").addEventListener("click", () => {
   a.download = "Malla 3D Ligera.html";
   a.click();
   URL.revokeObjectURL(url);
+  panel.classList.remove("visible");
+  toggleBtn.textContent = "⚙";
   const btn = document.getElementById("btn-save");
-  btn.textContent = "✓ Descargado";
-  setTimeout(() => { btn.textContent = "💾 Exportar HTML con valores actuales"; }, 2000);
+  btn.textContent = "💾 Exportar HTML con valores actuales";
 });
 </script>
 </body>
