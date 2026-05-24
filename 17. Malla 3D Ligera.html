@@ -111,7 +111,7 @@ canvas { display: block; width: 100%; height: 100%; }
   </div>
 
   <button id="btn-save" style="margin-top:8px;width:100%;padding:6px;background:rgba(255,80,20,0.3);color:#fff;border:1px solid rgba(255,80,20,0.5);border-radius:6px;cursor:pointer;font-size:12px;">
-    💾 Guardar configuración
+    💾 Exportar HTML con valores actuales
   </button>
 </div>
 
@@ -139,19 +139,7 @@ const DEFAULTS = {
   speed: 1.0,
 };
 
-let cfg = {};
-
-function loadConfig() {
-  const saved = localStorage.getItem("malla3d_config");
-  if (saved) {
-    try { return JSON.parse(saved); } catch (e) {}
-  }
-  return JSON.parse(JSON.stringify(DEFAULTS));
-}
-
-function saveConfig() {
-  localStorage.setItem("malla3d_config", JSON.stringify(cfg));
-}
+let cfg = JSON.parse(JSON.stringify(DEFAULTS));
 
 function applySliders() {
   document.getElementById("sl-points").value = cfg.points;
@@ -174,7 +162,6 @@ function applySliders() {
   });
 }
 
-cfg = loadConfig();
 applySliders();
 
 let pts = [];
@@ -338,10 +325,28 @@ document.querySelectorAll("#color-presets button").forEach(btn => {
 });
 
 document.getElementById("btn-save").addEventListener("click", () => {
-  saveConfig();
+  const defKey = `  points: ${cfg.points},
+  connectDist: ${cfg.connectDist},
+  fade: ${cfg.fade},
+  color: [${cfg.color.join(", ")}],
+  spread: ${cfg.spread},
+  colorIntensity: ${cfg.colorIntensity},
+  angle: ${cfg.angle},
+  speed: ${cfg.speed},`;
+  const html = document.documentElement.outerHTML.replace(
+    /const DEFAULTS = \{[\s\S]*?\};/,
+    `const DEFAULTS = {${defKey}};`
+  );
+  const blob = new Blob([html], { type: "text/html" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "Malla 3D Ligera.html";
+  a.click();
+  URL.revokeObjectURL(url);
   const btn = document.getElementById("btn-save");
-  btn.textContent = "✓ Guardado";
-  setTimeout(() => { btn.textContent = "💾 Guardar configuración"; }, 2000);
+  btn.textContent = "✓ Descargado";
+  setTimeout(() => { btn.textContent = "💾 Exportar HTML con valores actuales"; }, 2000);
 });
 </script>
 </body>
