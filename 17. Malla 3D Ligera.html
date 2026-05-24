@@ -348,10 +348,13 @@ document.getElementById("btn-save").addEventListener("click", () => {
   angle: ${cfg.angle},
   speed: ${cfg.speed},
   zoom: ${cfg.zoom},`;
-  const html = document.documentElement.outerHTML.replace(
-    /const DEFAULTS = \{[\s\S]*?\};/,
-    `const DEFAULTS = {${defKey}};`
-  );
+  let html = document.documentElement.outerHTML
+    .replace(/const DEFAULTS = \{[\s\S]*?\};/, `const DEFAULTS = {${defKey}};`)
+    .replace(/<button id="toggle-panel"[\s\S]*?<\/button>/, "")
+    .replace(/<div id="panel">[\s\S]*?<\/div>\s*\n\s*/, "")
+    .replace(/const panel = document.getElementById\("panel"\);\s*const toggleBtn = document.getElementById\("toggle-panel"\);\s*/, "")
+    .replace(/toggleBtn\.addEventListener\(.*?\);\s*/, "")
+    .replace(/document\.getElementById\("btn-save"\)[\s\S]*?\);\s*/, "");
   const blob = new Blob([html], { type: "text/html" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
@@ -361,8 +364,6 @@ document.getElementById("btn-save").addEventListener("click", () => {
   URL.revokeObjectURL(url);
   panel.classList.remove("visible");
   toggleBtn.textContent = "⚙";
-  const btn = document.getElementById("btn-save");
-  btn.textContent = "💾 Exportar HTML con valores actuales";
 });
 </script>
 </body>
