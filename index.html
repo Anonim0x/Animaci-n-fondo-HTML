@@ -40,14 +40,8 @@ canvas { display: block; width: 100%; height: 100%; }
 }
 #toggle-panel:hover { background: rgba(255,80,20,0.3); }
 
-#color-presets {
-  display: flex; gap: 6px; margin-bottom: 10px; flex-wrap: wrap;
-}
-#color-presets button {
-  width: 24px; height: 24px; border-radius: 50%;
-  border: 2px solid transparent; cursor: pointer;
-}
 #color-presets button.active { border-color: #fff; }
+
 </style>
 </head>
 <body>
@@ -107,13 +101,14 @@ canvas { display: block; width: 100%; height: 100%; }
   </div>
 
   <label>Color</label>
-  <div id="color-presets">
-    <button data-color="255,80,20" style="background:#ff5014" class="active"></button>
-    <button data-color="255,200,0" style="background:#ffc800"></button>
-    <button data-color="0,200,255" style="background:#00c8ff"></button>
-    <button data-color="100,255,100" style="background:#64ff64"></button>
-    <button data-color="255,50,150" style="background:#ff3296"></button>
-    <button data-color="200,100,255" style="background:#c864ff"></button>
+  <div id="color-presets" style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap;">
+    <button data-color="255,80,20" style="width:22px;height:22px;border-radius:50%;border:2px solid transparent;cursor:pointer;background:#ff5014" class="active"></button>
+    <button data-color="255,200,0" style="width:22px;height:22px;border-radius:50%;border:2px solid transparent;cursor:pointer;background:#ffc800"></button>
+    <button data-color="0,200,255" style="width:22px;height:22px;border-radius:50%;border:2px solid transparent;cursor:pointer;background:#00c8ff"></button>
+    <button data-color="100,255,100" style="width:22px;height:22px;border-radius:50%;border:2px solid transparent;cursor:pointer;background:#64ff64"></button>
+    <button data-color="255,50,150" style="width:22px;height:22px;border-radius:50%;border:2px solid transparent;cursor:pointer;background:#ff3296"></button>
+    <button data-color="200,100,255" style="width:22px;height:22px;border-radius:50%;border:2px solid transparent;cursor:pointer;background:#c864ff"></button>
+    <input type="text" id="color-hex" value="#ff5014" style="width:68px;padding:2px 4px;background:#111;color:#fff;border:1px solid #333;border-radius:4px;font-size:11px;font-family:monospace;">
   </div>
 
   <button id="btn-save" style="margin-top:8px;width:100%;padding:6px;background:rgba(255,80,20,0.3);color:#fff;border:1px solid rgba(255,80,20,0.5);border-radius:6px;cursor:pointer;font-size:12px;">
@@ -169,6 +164,7 @@ function applySliders() {
   document.querySelectorAll("#color-presets button").forEach(b => {
     b.classList.toggle("active", b.dataset.color === ci);
   });
+  document.getElementById("color-hex").value = "#" + cfg.color.map(c => c.toString(16).padStart(2, "0")).join("");
 }
 
 applySliders();
@@ -330,12 +326,30 @@ setupSlider("sl-fade", "v-fade", (v) => {
   document.getElementById("v-fade").textContent = (v / 100).toFixed(2);
 });
 
+function setColor(r, g, b) {
+  cfg.color = [r, g, b];
+  document.getElementById("color-hex").value = "#" + [r, g, b].map(c => c.toString(16).padStart(2, "0")).join("");
+}
+
 document.querySelectorAll("#color-presets button").forEach(btn => {
   btn.addEventListener("click", () => {
     document.querySelectorAll("#color-presets button").forEach(b => b.classList.remove("active"));
     btn.classList.add("active");
-    cfg.color = btn.dataset.color.split(",").map(Number);
+    const [r, g, b] = btn.dataset.color.split(",").map(Number);
+    setColor(r, g, b);
   });
+});
+
+document.getElementById("color-hex").addEventListener("change", (e) => {
+  let hex = e.target.value.trim();
+  if (!hex.startsWith("#")) hex = "#" + hex;
+  if (/^#[0-9a-f]{6}$/i.test(hex)) {
+    const r = parseInt(hex.slice(1, 3), 16);
+    const g = parseInt(hex.slice(3, 5), 16);
+    const b = parseInt(hex.slice(5, 7), 16);
+    document.querySelectorAll("#color-presets button").forEach(b => b.classList.remove("active"));
+    setColor(r, g, b);
+  }
 });
 
 document.getElementById("btn-save").addEventListener("click", () => {
@@ -348,13 +362,22 @@ document.getElementById("btn-save").addEventListener("click", () => {
   angle: ${cfg.angle},
   speed: ${cfg.speed},
   zoom: ${cfg.zoom},`;
-  let html = document.documentElement.outerHTML
-    .replace(/const DEFAULTS = \{[\s\S]*?\};/, `const DEFAULTS = {${defKey}};`)
-    .replace(/<button id="toggle-panel"[\s\S]*?<\/button>/, "")
-    .replace(/<div id="panel">[\s\S]*?<\/div>\s*\n\s*/, "")
-    .replace(/const panel = document.getElementById\("panel"\);\s*const toggleBtn = document.getElementById\("toggle-panel"\);\s*/, "")
-    .replace(/toggleBtn\.addEventListener\(.*?\);\s*/, "")
-    .replace(/document\.getElementById\("btn-save"\)[\s\S]*?\);\s*/, "");
+  const clone = document.documentElement.cloneNode(true);
+  const q = (s) => clone.querySelector(s);
+  if (q("#toggle-panel")) q("#toggle-panel").remove();
+  if (q("#panel")) q("#panel").remove();
+  if (q("#btn-save")) q("#btn-save").remove();
+  const scripts = clone.querySelectorAll("script");
+  scripts.forEach(sc => {
+    let code = sc.textContent;
+    code = code.replace(/const DEFAULTS = \{[\s\S]*?\};/, `const DEFAULTS = {${defKey}};`);
+    code = code.replace(/function applySliders[\s\S]*?\n}/, "");
+    code = code.replace(/\napplySliders\(\);/, "");
+    code = code.replace(/\n\/\/ --- UI ---[\s\S]*/, "");
+    sc.textContent = code;
+  });
+
+  const html = "<!DOCTYPE html>\n" + clone.outerHTML;
   const blob = new Blob([html], { type: "text/html" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
